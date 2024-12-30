@@ -1,9 +1,10 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
 
+#include <stdbool.h>
+#include <stdint.h>
 #include "../lib/list.h"
 #include "../lib/debug.h"
-#include <stdint.h>
 
 /* Thread states */
 enum thread_status {
@@ -15,7 +16,7 @@ enum thread_status {
 
 /* Thread identifier type */
 typedef int tid_t;
-#define TID_ERROR ((tid_t) -1)  /* Error value for tid_t */
+#define TID_ERROR ((tid_t)-1) /* Error value for tid_t */
 
 /* Thread priorities */
 #define PRI_MIN 0       /* Lowest priority */
@@ -30,57 +31,25 @@ struct thread {
     uint8_t *stack;                     /* Saved stack pointer */
     int priority;                       /* Priority */
     struct list_elem allelem;           /* List element for all threads */
-
-    /* Shared between thread.c and synch.c */
-    struct list_elem elem;              /* List element */
-
-    /* Tick to wake up the thread */
-    int64_t wakeup_tick;                /* Tick at which the thread should wake up */
-
-#ifdef USERPROG
-    /* Owned by userprog/process.c */
-    uint32_t *pagedir;                  /* Page directory */
-#endif
-
-    /* Additional data members can be added here */
+    struct list_elem elem;              /* List element for run queue or sleep queue */
+    int64_t wakeup_tick;                /* Tick to wake up */
 
     unsigned magic;                     /* Detects stack overflow */
 };
 
-/* If false (default), use round-robin scheduler.
-   If true, use multi-level feedback queue scheduler.
-   Controlled by kernel command-line option "-o mlfqs". */
-extern bool thread_mlfqs;
+/* External idle thread declaration */
+extern struct thread *idle_thread;
 
-/* Thread functions */
-void thread_init(void);
-void thread_start(void);
-
-void thread_tick(void);
-void thread_print_stats(void);
-
-typedef void thread_func(void *aux);
-tid_t thread_create(const char *name, int priority, thread_func *, void *);
-
-void thread_block(void);
-void thread_unblock(struct thread *);
-
-struct thread *thread_current(void);
-tid_t thread_tid(void);
-const char *thread_name(void);
-
-void thread_exit(void) NO_RETURN;
-void thread_yield(void);
-
-/* Thread comparison functions for wakeup tick */
-bool thread_wakeup_compare(const struct list_elem *a, const struct list_elem *b, void *aux);
-
-/* For advanced scheduler */
-int thread_get_priority(void);
-void thread_set_priority(int);
-int thread_get_nice(void);
-void thread_set_nice(int);
-int thread_get_recent_cpu(void);
-int thread_get_load_avg(void);
-
+/* Function prototypes */
+void thread_init(void);                                     /* Initialize the thread system */
+void thread_start(void);                                    /* Start the threading system */
+struct thread *thread_current(void);                       /* Get the currently running thread */
+void thread_block(void);                                    /* Block the current thread */
+void thread_unblock(struct thread *t);                     /* Unblock the given thread */
+void thread_tick(void);                                     /* Handle per-tick thread processing */
+void thread_sleep(int64_t ticks);                          /* Put the current thread to sleep */
+void thread_wakeup(int64_t current_tick);                  /* Wake up threads at the given tick */
+bool thread_wakeup_compare(const struct list_elem *a,      /* Compare wakeup ticks for sorting */
+                           const struct list_elem *b, 
+                           void *aux);
 #endif /* THREADS_THREAD_H */
