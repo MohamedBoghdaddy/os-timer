@@ -18,7 +18,6 @@ int main(void) {
     // Initialize necessary components
     thread_init();      // Initialize thread subsystem
     timer_init();       // Initialize timer subsystem
-    alarm_clock_init(); // Initialize alarm clock (if applicable)
 
     printf("Running tests...\n");
     test_timer_sleep(); // Run timer sleep test.
