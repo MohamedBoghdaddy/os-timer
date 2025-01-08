@@ -2,6 +2,8 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "../lib/list.h"
+#include "../lib/debug.h"
+#include "devices/timer.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -13,16 +15,17 @@
 #define UNUSED __attribute__((unused))
 #endif
 
-/* Global variables */
-struct thread *idle_thread;            /* Pointer to the idle thread */
-static struct list ready_list;         /* List of ready threads */
-static struct list sleeping_list;      /* List of sleeping threads */
-static int64_t ticks = 0;              /* Global timer ticks */
-
 /* Function prototypes */
 static struct thread *allocate_thread(void);
 static void schedule(void);
 static void idle(void *aux UNUSED);
+bool is_thread(struct thread *t); // Explicit declaration
+struct thread *running_thread(void); // Explicit declaration
+
+/* Global variables */
+struct thread *idle_thread;            /* Pointer to the idle thread */
+static struct list ready_list;         /* List of ready threads */
+static struct list sleeping_list;      /* List of sleeping threads */
 
 /* Initialize the thread system */
 void thread_init(void) {
@@ -108,24 +111,6 @@ void thread_sleep(int64_t wakeup_tick) {
     intr_set_level(old_level);
 }
 
-/* Wake up threads whose wakeup_tick has passed */
-void thread_wakeup(int64_t current_tick) {
-    struct list_elem *e = list_begin(&sleeping_list);
-
-    while (e != list_end(&sleeping_list)) {
-        struct thread *t = list_entry(e, struct thread, elem);
-
-        if (t->wakeup_tick <= current_tick) {
-            struct list_elem *next = list_next(e);
-            list_remove(e);
-            thread_unblock(t);
-            e = next;
-        } else {
-            break; // Remaining threads have later wakeup ticks
-        }
-    }
-}
-
 /* Scheduler */
 void schedule(void) {
     struct thread *current = thread_current();
@@ -154,39 +139,21 @@ void thread_switch(struct thread *current, struct thread *next) {
     ASSERT(current != NULL);
     ASSERT(next != NULL);
 
-    asm volatile (
-        "push %%ebp\n"
-        "mov %%esp, %[curr_esp]\n"
-        "mov %%ebp, %[curr_ebp]\n"
-        "mov %[next_esp], %%esp\n"
-        "mov %[next_ebp], %%ebp\n"
-        "pop %%ebp\n"
-        "ret\n"
+    __asm__ volatile (
+        "pushl %%ebp\n"           // Save the base pointer
+        "movl %%esp, %[curr_esp]\n" // Save the stack pointer
+        "movl %%ebp, %[curr_ebp]\n" // Save the base pointer
+        "movl %[next_esp], %%esp\n" // Restore the stack pointer
+        "movl %[next_ebp], %%ebp\n" // Restore the base pointer
+        "popl %%ebp\n"            // Restore the base pointer
+        "ret\n"                   // Return to the new thread
         :
         : [curr_esp] "m" (current->stack),
-          [curr_ebp] "m" (current->ebp),
+          [curr_ebp] "m" (current->stack), // Use stack pointer for ebp
           [next_esp] "m" (next->stack),
-          [next_ebp] "m" (next->ebp)
+          [next_ebp] "m" (next->stack) // Use stack pointer for ebp
         : "memory"
     );
-}
-
-/* Timer ticks function */
-int64_t timer_ticks(void) {
-    return ticks;
-}
-
-/* Timer initialization */
-void timer_init(void) {
-    ticks = 0;
-    list_init(&sleeping_list);
-}
-
-/* Timer interrupt handler */
-void timer_interrupt(struct intr_frame *args UNUSED) {
-    ticks++;
-    thread_tick();
-    thread_wakeup(ticks);
 }
 
 /* Tick handler for thread system */

@@ -1,3 +1,4 @@
+// timer.c
 #include "devices/timer.h"
 #include "threads/thread.h"
 #include "threads/interrupt.h"
@@ -14,7 +15,7 @@ static struct list sleepingList;     /* List of sleeping threads */
 /* Initialize the timer */
 void timer_init(void) {
     ticks = 0;
-    list_init(&sleepingList);  // Initialize the sleep queue
+    list_init(&sleepingList);
 }
 
 /* Get the current tick count */
@@ -65,17 +66,4 @@ void timer_interrupt(struct intr_frame *args UNUSED) {
     ticks++;
     thread_tick();        // Notify the scheduler of the tick
     thread_wakeup(ticks); // Wake up threads if their wakeup_tick has passed
-}
-
-/* Test function to verify timer_sleep functionality */
-void test_timer_sleep(void) {
-    printf("Test: Sleeping for 100 ticks...\n");
-    timer_sleep(100);
-    printf("Test: Woke up after 100 ticks.\n");
-}
-
-/* Run alarm clock tests */
-void run_alarm_clock_tests(void) {
-    timer_init();
-    test_timer_sleep();
 }

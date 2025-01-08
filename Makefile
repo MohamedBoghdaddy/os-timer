@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -I. -I./threads -I./devices -I./lib
-LDFLAGS =
+CFLAGS = -Wall -Wextra -std=c99 -m32 -I. -I./threads -I./devices -I./lib
+LDFLAGS = -m32
 
-SRC = devices/timer.c threads/thread.c threads/synch.c threads/interrupt.c main.c
+SRC = devices/timer.c threads/thread.c threads/synch.c threads/interrupt.c main.c lib/list.c
 OBJ = $(SRC:.c=.o)
 
 TARGET = os_project
